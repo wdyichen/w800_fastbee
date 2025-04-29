@@ -1,0 +1,41 @@
+menu "Example configuration"
+
+    config USE_HTTPS_DOWNLOAD_IMG
+        bool "Download the image using HTTPS"
+        default y
+        help
+            When USE_HTTPS_DOWNLOAD_IMG is enabled, download the image using the HTTPS URL;
+            otherwise, download the image using the HTTP URL.
+
+    config OTA_PROGRESS_REPORT_THRESHOLD
+        int "Progress Report Threshold (%)"
+        range 1 100
+        default 10
+        help
+            This option sets the threshold for reporting progress during the OTA upgrade.
+            The progress will be reported every 'OTA_PROGRESS_REPORT_THRESHOLD' percentage of the upgrade process.
+
+    config OTA_SUPPORT_PERIODIC_CHECK
+        bool "OTA support periodic check for updates"
+        default y
+        help
+            When OTA_SUPPORT_PERIODIC_CHECK is enabled, the system will periodically check for available updates.
+            If updates are available, the system will notify the user or automatically download the updates.
+            Otherwise, the system will not perform any periodic check for updates.
+
+    config OTA_UPGRADE_PERIOD
+        int "OTA Upgrade Period (seconds)"
+        range 60 86400
+        default 60
+        help
+            This option sets the period in seconds for how often the system should check for an OTA upgrade.
+            The system will check for a new update every 'OTA_UPGRADE_PERIOD' seconds.
+
+    config OTA_MQTTS_RECONNECT_TIMEOUT
+        int "MQTT Reconnect Timeout (seconds)"
+        range 10 3600
+        default 10
+        help
+            Timeout in seconds for MQTT reconnection during OTA. Default is 10 seconds.
+
+endmenu
