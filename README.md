@@ -23,4 +23,4 @@
 
 ## 详细教程
 
-未完待续……
+可参考这篇[教程](https://wdyichen.cn/?log=blog&id=101)。
