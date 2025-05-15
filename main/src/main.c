@@ -165,6 +165,15 @@ static void led_state_upload(int state)
     }
 }
 
+void ota_state_upload(const char *state)
+{
+    if (mqtt_client) {
+        wm_log_info("publish message is %s", state);
+
+        wm_mqtt_client_publish(mqtt_client, TOPIC_OTA_REPLY, state, 0, 1, 0);
+    }
+}
+
 static void temp_state_upload(float temp)
 {
     char message[128];

@@ -8,14 +8,16 @@ extern "C" {
 #define BROKER_URI            "mqtt://iot.fastbee.cn:1883"
 
 #define USER_NAME             "admin"
-#define PASSWORD              "P63SLQEDIOTU5A5A"
+#define PASSWORD              "P962U0ELW02X88KE"
 
-#define PRODUCT_ID            "3916"
-#define DEVICE_ID             "D62MU97K8BZ6"
+#define PRODUCT_ID            "4113"
+#define DEVICE_ID             "D6O0RUN27PPP"
 
 #define CLIENT_ID             "S&" DEVICE_ID "&" PRODUCT_ID "&1"
 
-#define TOPIC_OTA_UPDATE      "/" PRODUCT_ID "/" DEVICE_ID "/ota/get"
+#define TOPIC_OTA_UPDATE      "/" DEVICE_ID "/http/upgrade/set"
+#define TOPIC_OTA_REPLY       "/" DEVICE_ID "/http/upgrade/reply"
+
 #define TOPIC_MQTT_SUBSCRIBE  "/" PRODUCT_ID "/" DEVICE_ID "/function/get"
 
 #define TOPIC_DEV_INFO_GET    "/" PRODUCT_ID "/" DEVICE_ID "/info/get"

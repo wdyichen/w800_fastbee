@@ -17,6 +17,8 @@
 #include "wm_log.h"
 
 typedef struct {
+    int taskid;
+    char version[16];
     uint32_t uplink_msg_id;            /**< Message identifier for uplink communication. */
     uint32_t downlink_msg_id;          /**< Message identifier for downlink communication. */
     bool is_not_first_downlink;        /**< Flag to indicate if this is not the first downlink message. */
@@ -27,6 +29,8 @@ typedef struct {
 } ctx_t;
 
 static ctx_t g_ctx = { 0 }; /**< Global OTA context instance */
+
+extern void ota_state_upload(const char *state);
 
 int set_firmware_type(char *fw_type)
 {
@@ -149,6 +153,10 @@ static void ota_state_callback(wm_ota_state_t *ota_state)
     }
 
     if (ota_state->status == WM_OTA_STATUS_DOWNLOADED) {
+        char buf[128];
+        sprintf(buf, "{\"taskId\":%d,\"progress\":100,\"version\":\"%s\",\"status\":2}", g_ctx.taskid, g_ctx.version);
+        ota_state_upload(buf);
+
         mbedtls_sha256_finish(&g_ctx.sha256_ctx, ota_file_sha256);
         mbedtls_sha256_free(&g_ctx.sha256_ctx);
         if (ret) {
@@ -163,7 +171,12 @@ static void ota_state_callback(wm_ota_state_t *ota_state)
                 wm_log_error("Failed to write to the flash device.");
             }
         } else {
+            sprintf(buf, "{\"taskId\":%d,\"version\":\"%s\",\"status\":3}", g_ctx.taskid, g_ctx.version);
+            ota_state_upload(buf);
+
             wm_log_info("SHA-256 ECDSA signature verification successful.");
+            wm_os_internal_time_delay_ms(1000);
+
             ret = set_firmware_type("UPDATE");
             if (ret != WM_ERR_SUCCESS) {
                 wm_log_error("Error setting firmware type to UPDATE.");
@@ -178,7 +191,7 @@ int ota_parse_update(char *payload)
 {
     int ret               = WM_ERR_SUCCESS;
     char sw_version[16]   = { 0 };
-    size_t sign_data_size = 0;
+    char url[256];
 
     cJSON *json = cJSON_Parse(payload);
     if (json == NULL) {
@@ -188,17 +201,15 @@ int ota_parse_update(char *payload)
         }
         return WM_ERR_FAILED;
     }
-    if (g_ctx.downlink_msg_id != cJSON_GetObjectItem(json, "msg_sequence")->valueint || g_ctx.is_not_first_downlink == false) {
-        g_ctx.downlink_msg_id = cJSON_GetObjectItem(json, "msg_sequence")->valueint;
-    } else {
+    if (g_ctx.is_not_first_downlink != false) {
         wm_log_error("OTA message sequence duplication");
         goto exit;
     }
 
-    cJSON *data_item = cJSON_GetObjectItem(json, "downloadUrl");
+    cJSON *data_item = cJSON_GetObjectItem(json, "url");
     if (data_item != NULL) {
         wm_log_info("Version: %f", cJSON_GetObjectItem(json, "version")->valuedouble);
-        wm_log_info("HTTPS URL: %s", cJSON_GetObjectItem(json, "downloadUrl")->valuestring);
+        wm_log_info("URL: %s", cJSON_GetObjectItem(json, "url")->valuestring);
 
         ret = wm_ota_ops_get_version(sw_version);
         if (ret != WM_ERR_SUCCESS) {
@@ -209,7 +220,13 @@ int ota_parse_update(char *payload)
             // return WM_ERR_OTA_SAME_VERSION;
         }
 
-        g_ctx.http_cfg.fw_url          = cJSON_GetObjectItem(json, "downloadUrl")->valuestring;
+        strcpy(url, "https://iot.fastbee.cn/prod-api");
+        strcat(url, cJSON_GetObjectItem(json, "url")->valuestring);
+        wm_log_info("HTTPS URL: %s", url);
+
+        g_ctx.taskid = cJSON_GetObjectItem(json, "taskId")->valueint;
+        sprintf(g_ctx.version, "%0.1f", cJSON_GetObjectItem(json, "version")->valuedouble);
+        g_ctx.http_cfg.fw_url          = url;
         g_ctx.http_cfg.ota_get_file_cb = ota_get_file_callback;
         g_ctx.http_cfg.ota_state_cb    = ota_state_callback;
         g_ctx.http_cfg.reboot          = 0;
@@ -221,18 +238,6 @@ int ota_parse_update(char *payload)
             goto exit;
         }
 
-        sign_data_size  = strlen(cJSON_GetObjectItem(data_item, "sig-sha256-ecdsa")->valuestring) * 3 / 4;
-        g_ctx.sign_data = (char *)wm_os_internal_malloc(sign_data_size);
-        if (g_ctx.sign_data) {
-            ret =
-                mbedtls_base64_decode((unsigned char *)g_ctx.sign_data, sign_data_size, &g_ctx.sign_size,
-                                      (const unsigned char *)(cJSON_GetObjectItem(data_item, "sig-sha256-ecdsa")->valuestring),
-                                      strlen(cJSON_GetObjectItem(data_item, "sig-sha256-ecdsa")->valuestring));
-            if (ret != WM_ERR_SUCCESS) {
-                wm_log_error("Base64 decode error: %d", ret);
-                goto exit;
-            }
-        }
     }
 
 exit:
